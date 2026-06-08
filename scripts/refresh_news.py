@@ -159,7 +159,7 @@ def fetch_metadata(articles):
     return results
 
 # ===== STEP 4: Generate HTML =====
-def gen_html(articles, github):
+def gen_html(articles, github, run_info=None):
     meta_lookup = {}
     for a in articles:
         aid = a.get('id') or a.get('aid', '')
@@ -400,6 +400,11 @@ def gen_html(articles, github):
         if n >= 1000: return f'{n/1000:.1f}千'
         return str(n)
     
+    ri = run_info or {}
+    if ri: total_fresh = ri.get('fresh', 0); total_cached = ri.get('cached', 0)
+    else: total_fresh = 0; total_cached = 0
+    refresh_html = f'<div class="refresh-info">最后更新: {ri.get("time","?")} | 本次新增 {ri.get("fresh",0)} 篇 | 累计 {ri.get("total",0)} 篇</div>' if ri else ''
+
     html = f'''<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -449,6 +454,7 @@ body{{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;backg
 .gh{{background:#fff;border-radius:12px;padding:12px 18px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.06);display:flex;flex-wrap:wrap;align-items:center;gap:12px;font-size:13px}}
 .gh .g{{color:#555}}.gh .g strong{{color:#e94560}}
 .gh a{{color:#7c3aed;text-decoration:none;font-size:12px}}
+.refresh-info{{background:#f0f4ff;border:1px solid #d0d7ff;border-radius:8px;padding:8px 14px;margin-bottom:12px;font-size:12px;color:#555}}
 .ft{{text-align:center;font-size:12px;color:#bbb;padding:24px 0;border-top:1px solid #eee;margin-top:16px}}
 .ft a{{color:#e94560;text-decoration:none}}
 @media(max-width:600px){{body{{padding:10px}}.hdr{{padding:20px 16px}}}}
@@ -467,6 +473,8 @@ body{{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;backg
 <span class="g">&#127829; <strong>{forks}</strong> Forks</span>
 <a href="https://github.com/NousResearch/hermes-agent/releases/tag/v2026.6.5" target="_blank">&#128640; v0.16.0 &rarr;</a>
 </div>
+
+{refresh_html}
 
 <div class="tb">
 <span class="l">&#128204; 排序：</span>
@@ -567,7 +575,13 @@ if __name__ == '__main__':
     
     # Generate HTML
     print('Generating HTML...')
-    size = gen_html(articles, github)
+    run_info = {
+        'time': datetime.now().strftime('%Y-%m-%d %H:%M'),
+        'fresh': len(fresh_articles),
+        'total': len(articles),
+        'cached': len(cached_articles),
+    }
+    size = gen_html(articles, github, run_info)
     print(f'  Written {size} bytes to {OUTPUT}')
     
     # Save updated cache
