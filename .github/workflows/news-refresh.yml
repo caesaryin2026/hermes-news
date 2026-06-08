@@ -1,0 +1,38 @@
+name: Hermes News Refresh
+
+on:
+  schedule:
+    - cron: '0 * * * *'   # 每小时整点运行
+  workflow_dispatch:       # 支持手动触发
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Run news refresh
+        run: |
+          python3 scripts/refresh_news.py
+      
+      - name: Commit and push
+        run: |
+          git config user.name "Hermes News Bot"
+          git config user.email "bot@hermes-news.local"
+          git add index.html hermes-news.html articles_cache.json 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "🔄 News refresh $(date '+%Y-%m-%d %H:%M')"
+            git push
+          fi
